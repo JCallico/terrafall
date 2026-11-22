@@ -1,0 +1,71 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terrafall-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Check site files
+        run: |
+          for f in index.html css/style.css js/app.js favicon.svg; do
+            test -s "site/$f" || { echo "missing site/$f"; exit 1; }
+          done
+          node --check site/js/app.js
+          grep -q 'css/style.css' site/index.html
+          grep -q 'js/app.js' site/index.html
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: validate
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://terrafall.iqapps.space
+    steps:
+      - name: Publish on the VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            sudo -i -u terrafall << 'EOF'
+            set -e
+            cd /srv/apps/terrafall
+
+            echo "Syncing to latest main..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "Normalizing permissions for nginx..."
+            find site -type d -exec chmod 755 {} +
+            find site -type f -exec chmod 644 {} +
+            test -f site/index.html
+
+            echo "Deployment successful: https://terrafall.iqapps.space"
+            EOF

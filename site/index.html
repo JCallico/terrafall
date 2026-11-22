@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Terrafall — Find your place on Earth</title>
+  <meta name="description" content="Terrafall detects your location and descends from orbit to the exact spot where you are right now." />
+  <link rel="icon" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Satellite map -->
+  <div id="map" aria-hidden="true"></div>
+
+  <!-- Cinematic vignette -->
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- Center crosshair / reticle -->
+  <div id="crosshair" aria-hidden="true">
+    <div class="reticle">
+      <span class="line h"></span>
+      <span class="line v"></span>
+      <span class="ring"></span>
+      <span class="dot"></span>
+    </div>
+  </div>
+
+  <!-- HUD: brand -->
+  <header class="hud hud-tl">
+    <h1 class="wordmark">Terra<span>fall</span></h1>
+    <p class="tagline">from orbit to you</p>
+  </header>
+
+  <!-- HUD: status chips -->
+  <div class="hud hud-tr">
+    <div class="chip" id="methodChip">
+      <span class="dot"></span>
+      <span id="methodText">locating…</span>
+    </div>
+    <div class="chip mono">
+      <span class="chip-label">zoom</span>
+      <span id="zoomValue">—</span>
+    </div>
+  </div>
+
+  <!-- HUD: coordinates -->
+  <div class="hud hud-bl" id="coordsPanel">
+    <div class="mono coords" id="coordsLine">—</div>
+    <div class="mono dim" id="altLine">altitude —</div>
+  </div>
+
+  <!-- HUD: controls -->
+  <div class="hud hud-br" id="controls">
+    <button id="replayBtn" class="ghost" title="Replay the descent (R)">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+      <span>Replay</span>
+    </button>
+    <button id="recenterBtn" class="ghost" title="Recenter on your location">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/></svg>
+      <span>Recenter</span>
+    </button>
+    <button id="northBtn" class="ghost hidden" title="Reset north">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v15"/><path d="m7 14 5 5 5-5"/></svg>
+    </button>
+  </div>
+
+  <!-- Hint -->
+  <div class="hint mono" id="hint">scroll to zoom&nbsp;&nbsp;·&nbsp;&nbsp;drag to explore</div>
+
+  <!-- Loading / intro overlay -->
+  <div id="loader">
+    <div class="stars" aria-hidden="true"></div>
+    <div class="loader-inner">
+      <div class="globe" aria-hidden="true">
+        <svg viewBox="0 0 120 120" fill="none" stroke="currentColor">
+          <circle cx="60" cy="60" r="52" stroke-width="1.5"/>
+          <ellipse cx="60" cy="60" rx="21" ry="52" stroke-width="1"/>
+          <ellipse cx="60" cy="60" rx="39" ry="52" stroke-width="1"/>
+          <line x1="8" y1="60" x2="112" y2="60" stroke-width="1"/>
+          <path d="M8 37 Q60 50 112 37" stroke-width="1"/>
+          <path d="M8 83 Q60 70 112 83" stroke-width="1"/>
+        </svg>
+        <span class="globe-ring"></span>
+      </div>
+      <h2 class="loader-title">Terrafall</h2>
+      <p class="loader-status" id="statusText">Awakening the satellite…</p>
+      <div class="loader-bar"><span id="loaderFill"></span></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
