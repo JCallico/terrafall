@@ -32,8 +32,14 @@ Browsers only expose precise device location on `https://` or `localhost`.
 2. **IP geolocation** (ipwho.is, then ipapi.co) is the fallback when GPS is
    denied, unavailable, or the site is served over plain HTTP — a city-level fix.
 
-The camera then animates from a whole-Earth view to that spot, over-zooming to
-the closest satellite tile that exists.
+The camera then animates from a whole-Earth view toward that spot, and how far
+it descends depends on how much it actually knows:
+
+- **Precise** (GPS/Wi-Fi within ~500 m): falls to street level and drops an
+  exact pin.
+- **Approximate** (IP geolocation, or GPS with a large error radius): stops at
+  city level and shows a soft "approx." ring — it never pretends to know your
+  exact address.
 
 ## Features
 
@@ -41,6 +47,7 @@ the closest satellite tile that exists.
 - A live zoom / altitude counter that plunges from ~12,000 km to tens of metres
 - A glassmorphic HUD: detection method + accuracy, coordinates, and zoom
 - A pulsing "you are here" marker, plus Replay (`R`), Recenter and Reset-north (`N`)
+- Precision-aware descent: an exact pin for a tight GPS fix, an honest "approx." area ring (and city-level zoom) for IP or coarse fixes
 - Film grain and vignette for a cinematic finish, responsive down to phone width
 
 ## Deployment

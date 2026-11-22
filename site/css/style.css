@@ -185,6 +185,7 @@ html, body {
   animation: blink 1.4s ease-in-out infinite;
 }
 .chip.locked .dot { background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: none; }
+.chip.approximate .dot { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; animation: none; }
 
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 
@@ -272,6 +273,44 @@ body.arrived #controls, body.arrived #coordsPanel, body.arrived .hint { opacity:
 @keyframes ping {
   0% { transform: scale(0.6); opacity: 0.8; }
   70%, 100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* Approximate-location marker: a soft area ring instead of a precise pin. */
+.area-marker {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.area-marker-ring {
+  position: absolute;
+  inset: 0;
+  border: 2px dashed rgba(94, 234, 212, 0.65);
+  border-radius: 50%;
+  background: rgba(94, 234, 212, 0.08);
+  animation: area-pulse 3.5s var(--ease) infinite;
+}
+.area-marker-label {
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 9px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(10, 16, 28, 0.65);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+}
+@keyframes area-pulse {
+  0%, 100% { transform: scale(0.88); opacity: 0.55; }
+  50% { transform: scale(1); opacity: 1; }
 }
 
 /* --------------------------------------------------------------------------

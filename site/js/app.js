@@ -25,10 +25,12 @@
   };
 
   // Tunables
-  const START_ZOOM = 1.6;       // whole-Earth orbit
-  const FLIGHT_ZOOM = 20;       // closest practical detail level
+  const START_ZOOM = 1.6;        // whole-Earth orbit
+  const FLIGHT_ZOOM = 20;        // closest practical detail level (precise fix only)
+  const AREA_ZOOM = 11;          // city/region level when only an approximate fix is known
   const FLIGHT_DURATION = 14000; // descent length (ms)
-  const OVERZOOM_MAX = 22;      // allow over-zoom past source maxzoom
+  const OVERZOOM_MAX = 22;       // allow over-zoom past source maxzoom
+  const PRECISE_ACCURACY_M = 500; // GPS accuracy (m) below which a street-level pin is trusted
 
   // IP geolocation providers (no API key required). Ordered by reliability.
   const IP_PROVIDERS = [
@@ -41,6 +43,17 @@
   let target = null;   // { lat, lng, accuracy, method, city, region, country }
   let arrived = false;
   let flying = false;
+
+  /* A "precise" fix is GPS/Wi-Fi with tight accuracy. Anything else (IP
+     geolocation, or GPS with a large error radius) is only an approximate
+     area and must not be presented as a street-level address. */
+  function isPrecise(t) {
+    return t.method === 'gps' && t.accuracy != null && t.accuracy <= PRECISE_ACCURACY_M;
+  }
+
+  function targetZoom(t) {
+    return isPrecise(t) ? FLIGHT_ZOOM : AREA_ZOOM;
+  }
 
   /* ------------------------------------------------------------------------
      Status / loader
@@ -107,7 +120,7 @@
 
     if (gps) {
       target = gps;
-      setStatus('Position locked.', 100);
+      setStatus(isPrecise(gps) ? 'Position locked.' : 'Approximate position found.', 100);
       return begin();
     }
 
@@ -116,7 +129,7 @@
 
     if (ip) {
       target = ip;
-      setStatus('Position locked.', 100);
+      setStatus('Located to city level.', 100);
       return begin();
     }
 
@@ -162,7 +175,7 @@
      ------------------------------------------------------------------------ */
   function begin() {
     setStatus('Beginning the descent…', 100);
-    els.methodChip.classList.add('locked');
+    els.methodChip.classList.add(isPrecise(target) ? 'locked' : 'approximate');
 
     // Let the "locked" beat land before the camera moves.
     setTimeout(() => {
@@ -181,7 +194,7 @@
     map.once('moveend', onArrival);
     map.flyTo({
       center: [target.lng, target.lat],
-      zoom: FLIGHT_ZOOM,
+      zoom: targetZoom(target),
       pitch: 0,
       bearing: 0,
       duration: FLIGHT_DURATION,
@@ -200,7 +213,7 @@
     els.crosshair.classList.add('fade');
 
     setMethodText(target);
-    els.coordsLine.textContent = formatLatLng(target.lat, target.lng);
+    els.coordsLine.textContent = coordsLabel(target);
     els.altLine.textContent = 'altitude ' + formatAltitude(altitudeFromZoom(map.getZoom()));
     updateZoomValue();
   }
@@ -226,8 +239,16 @@
   function placeMarker() {
     if (marker) marker.remove();
     const el = document.createElement('div');
-    el.className = 'marker';
-    el.innerHTML = '<div class="marker-ping"></div><div class="marker-dot"></div>';
+
+    if (isPrecise(target)) {
+      el.className = 'marker';
+      el.innerHTML = '<div class="marker-ping"></div><div class="marker-dot"></div>';
+    } else {
+      // Approximate fix: a soft area ring, not a street-level pin.
+      el.className = 'area-marker';
+      el.innerHTML = '<div class="area-marker-ring"></div><span class="area-marker-label">approx.</span>';
+    }
+
     marker = new maplibregl.Marker({ element: el, anchor: 'center' })
       .setLngLat([target.lng, target.lat])
       .addTo(map);
@@ -262,7 +283,7 @@
       updateFlightReadout();
       map.flyTo({
         center: [target.lng, target.lat],
-        zoom: FLIGHT_ZOOM,
+        zoom: targetZoom(target),
         pitch: 0,
         bearing: 0,
         duration: FLIGHT_DURATION,
@@ -276,7 +297,7 @@
     if (!target || !map || flying) return;
     map.flyTo({
       center: [target.lng, target.lat],
-      zoom: Math.max(map.getZoom(), 18),
+      zoom: Math.max(map.getZoom(), targetZoom(target)),
       duration: 2200,
       essential: true,
     });
@@ -291,7 +312,7 @@
      Fallback: reveal the world without a fix
      ------------------------------------------------------------------------ */
   function revealWorld() {
-    els.methodChip.classList.add('locked');
+    els.methodChip.classList.add('approximate');
     els.methodText.textContent = 'no fix';
     setTimeout(() => {
       els.loader.classList.add('done');
@@ -306,12 +327,13 @@
      Formatting helpers
      ------------------------------------------------------------------------ */
   function setMethodText(t) {
-    if (t.method === 'gps') {
-      els.methodText.textContent =
-        t.accuracy != null ? `GPS · ± ${Math.round(t.accuracy)} m` : 'GPS';
+    if (isPrecise(t)) {
+      els.methodText.textContent = `GPS · ± ${Math.round(t.accuracy)} m`;
+    } else if (t.method === 'gps') {
+      els.methodText.textContent = `GPS · ± ${Math.round(t.accuracy)} m · approximate`;
     } else {
       const place = [t.city, t.country].filter(Boolean).join(', ');
-      els.methodText.textContent = place ? `IP · ${place}` : 'IP';
+      els.methodText.textContent = place ? `IP · ${place} · approximate` : 'IP · approximate';
     }
   }
 
@@ -319,6 +341,22 @@
     const ns = lat >= 0 ? 'N' : 'S';
     const ew = lng >= 0 ? 'E' : 'W';
     return `${Math.abs(lat).toFixed(5)}° ${ns}   ${Math.abs(lng).toFixed(5)}° ${ew}`;
+  }
+
+  // A label that never overstates what we know: precise fixes get exact
+  // coordinates; approximate fixes get the area name (or coarse coordinates)
+  // instead of a fake street-level address.
+  function coordsLabel(t) {
+    if (isPrecise(t)) return formatLatLng(t.lat, t.lng);
+    const place = [t.city, t.region, t.country].filter(Boolean).join(', ');
+    if (place) return `≈ ${place}`;
+    return `≈ ${formatLatLngRough(t.lat, t.lng)}`;
+  }
+
+  function formatLatLngRough(lat, lng) {
+    const ns = lat >= 0 ? 'N' : 'S';
+    const ew = lng >= 0 ? 'E' : 'W';
+    return `${Math.abs(lat).toFixed(1)}° ${ns}   ${Math.abs(lng).toFixed(1)}° ${ew}`;
   }
 
   // Rough camera altitude in meters derived from zoom level.
